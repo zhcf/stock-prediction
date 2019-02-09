@@ -17,8 +17,8 @@
 import tushare as ts # TuShare is a utility for crawling historical data of China stocks
 import pandas as pd
 import os
-if not os.path.exists('./traingdata'):
-    os.mkdir('./traingdata')
+if not os.path.exists('./trainingdata'):
+    os.mkdir('./trainingdata')
 if not os.path.exists('./inferencedata'):
     os.mkdir('./inferencedata')
 
