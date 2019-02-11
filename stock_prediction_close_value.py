@@ -293,18 +293,18 @@ def predict(stocks):
 if __name__ == "__main__":
     stocks = get_stocks()
     train(stocks)
-    predict(stocks)
-    USE_SHORT_PARAMS = False
-    if USE_SHORT_PARAMS:
-        g_data_predict_directory = DIR_DATA_PREDICT_SHORT_PARAMS
-        g_data_train_directory = DIR_DATA_TRAIN_SHORT_PARAMS
-        g_model_directory = DIR_MODEL_SHORT_PARAMS
-        g_predict_directory = DIR_PREDICT_SHORT_PARAMS
-    else:
-        g_data_predict_directory = DIR_DATA_PREDICT_FULL_PARAMS
-        g_data_train_directory = DIR_DATA_TRAIN_FULL_PARAMS
-        g_model_directory = DIR_MODEL_FULL_PARAMS
-        g_predict_directory = DIR_PREDICT_FULL_PARAMS
+    # predict(stocks)
+    # USE_SHORT_PARAMS = False
+    # if USE_SHORT_PARAMS:
+    #     g_data_predict_directory = DIR_DATA_PREDICT_SHORT_PARAMS
+    #     g_data_train_directory = DIR_DATA_TRAIN_SHORT_PARAMS
+    #     g_model_directory = DIR_MODEL_SHORT_PARAMS
+    #     g_predict_directory = DIR_PREDICT_SHORT_PARAMS
+    # else:
+    #     g_data_predict_directory = DIR_DATA_PREDICT_FULL_PARAMS
+    #     g_data_train_directory = DIR_DATA_TRAIN_FULL_PARAMS
+    #     g_model_directory = DIR_MODEL_FULL_PARAMS
+    #     g_predict_directory = DIR_PREDICT_FULL_PARAMS
     # train()
     # predict()
     '''the below is for multi gpu running to accelerate the training, python stock_prediction_close_value.py 4 0,  python stock_prediction_close_value.py 4 1'''
