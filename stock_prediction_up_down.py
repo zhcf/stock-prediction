@@ -2,9 +2,9 @@
 # coding: utf-8
 
 # # Stock Prediction with Recurrent Neural Network
-# 
+#
 # Deep learning is involved a lot in the modern quantitive financial field. There are many different neural networks can be applied to stock price prediction problems. The recurrent neural network, to be specific, the Long Short Term Memory(LSTM) network outperforms others architecture since it can take advantage of predicting time series (or sequentially) involved result with a specific configuration.
-# 
+#
 # We will make a really simple LSTM with Keras to predict the stock price in the Chinese stock.
 
 # In[1]:
@@ -13,7 +13,7 @@
 import time
 import math
 from keras.models import Sequential
-from keras.layers.core import Dense, Dropout, Activation,Flatten
+from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.recurrent import LSTM
 import numpy as np
 import pandas as pd
@@ -43,26 +43,15 @@ else:
     g_predict_directory = DIR_PREDICT_FULL_PARAMS
 
 
-def get_stocks():
-    stocks = {}
-    with open("stocklist.txt", "r") as ff:
-        lines = ff.readlines()
-        for line in lines:
-            items = line.split(",")
-            if len(items[0]) > 0:
-                stocks[items[0]] = items[1]
-    return stocks
-
-
 def preprocess_training_data(stock, seq_len):
     amount_of_features = len(stock.columns)
     data = stock.values
-    
+
     sequence_length = seq_len + 1
     all = []
     for index in range(len(data) - sequence_length):
-        all.append(data[index : index + sequence_length])
-        
+        all.append(data[index: index + sequence_length])
+
     all = np.array(all)
     row = round(0.9 * all.shape[0])
 
@@ -83,7 +72,7 @@ def preprocess_training_data(stock, seq_len):
     y_train = y[: int(row)]
     y_test = y[int(row):]
 
-    y = y.reshape(y.shape[0],1)
+    y = y.reshape(y.shape[0], 1)
     y_train = y_train.reshape(y_train.shape[0], 1)
     y_test = y_test.reshape(y_test.shape[0], 1)
     preprocessor_y = prep.StandardScaler().fit(y)
@@ -106,18 +95,18 @@ def preprocess_inference_data(stock, seq_len):
     data = stock.values
 
     all = []
-    for index in range(len(data) - seq_len + 1 ):
+    for index in range(len(data) - seq_len + 1):
         all.append(data[index: index + seq_len])
 
     all = np.array(all)
 
-    samples = all[:,:,:]
+    samples = all[:, :, :]
     samples = samples.reshape(samples.shape[0], seq_len * amount_of_features)
     preprocessor_sample = prep.StandardScaler().fit(samples)
     samples = preprocessor_sample.transform(samples)
     samples = samples.reshape(samples.shape[0], seq_len, amount_of_features)
 
-    y_all = all[:, 0,-1]
+    y_all = all[:, 0, -1]
     y_all = y_all.reshape(y_all.shape[0], 1)
     preprocessor_y = prep.StandardScaler().fit(y_all)
 
@@ -125,17 +114,16 @@ def preprocess_inference_data(stock, seq_len):
 
 
 # ## Build the LSTM Network
-# 
+#
 # Here we will build a simple RNN with 2 LSTM layers.
 # The architecture is:
-#     
+#
 #     LSTM --> Dropout --> LSTM --> Dropout --> Fully-Conneted(Dense)
 
 # In[5]:
 
 def build_model(model_input_dim, model_window):
     model = Sequential()
-
 
     # By setting return_sequences to True we are able to stack another LSTM layer
     model.add(LSTM(
@@ -161,7 +149,6 @@ def build_model(model_input_dim, model_window):
 
 def build_model_1(model_input_dim, model_window):
     model = Sequential()
-
 
     # By setting return_sequences to True we are able to stack another LSTM layer
     model.add(LSTM(
@@ -191,8 +178,7 @@ def build_model_1(model_input_dim, model_window):
     return model
 
 
-def train():
-    stocks = get_stocks()
+def train(stocks):
     stocks_accuracy = []
     for (stock_index, stock_name) in stocks.items():
         try:
@@ -204,8 +190,8 @@ def train():
             model = build_model(X_train.shape[2], WINDOW)
 
             # hyper_parameters = [(256, 1),(256,5)]
-            hyper_parameters = [(64,10), (128,10), (64,50), (128,50), (256,50),
-                                (64,100), (128,100),(128, 300), (256, 300),
+            hyper_parameters = [(64, 10), (128, 10), (64, 50), (128, 50), (256, 50),
+                                (64, 100), (128, 100), (128, 300), (256, 300),
                                 (512, 300), (128, 500), (256, 500), (512, 500)]
             min_error = 10000.0
             selected_hyper_parameter = None
@@ -251,8 +237,7 @@ def train():
         csvwriter.writerows(stocks_accuracy)
 
 
-def predict():
-    stocks = get_stocks()
+def predict(stocks):
     stocks_accuracy = []
     for (stock_index, stock_name) in stocks.items():
         try:
@@ -271,7 +256,7 @@ def predict():
 
             error_percentage = 0.0
             for u in range(len(y)):
-                error_percentage += abs(y[u] - pred[u])/y[u]
+                error_percentage += abs(y[u] - pred[u]) / y[u]
             error_percentage = error_percentage * 100 / len(y)
             stocks_accuracy.append((stock_index, error_percentage))
 
@@ -303,8 +288,9 @@ def predict():
 
 
 if __name__ == "__main__":
-    train()
-    predict()
+    stocks = get_stocks()
+    train(stocks)
+    predict(stocks)
     USE_SHORT_PARAMS = False
     if USE_SHORT_PARAMS:
         g_data_predict_directory = DIR_DATA_PREDICT_SHORT_PARAMS
@@ -318,7 +304,26 @@ if __name__ == "__main__":
         g_predict_directory = DIR_PREDICT_FULL_PARAMS
     # train()
     # predict()
+    '''the below is for multi gpu running to accelerate the training, python stock_prediction_close_value.py 4 0,  python stock_prediction_close_value.py 4 1'''
+    '''
+    stocks = get_stocks()
+    stock_count = len(stocks)
+    import sys
 
+    argv = sys.argv
+    gpu_count = int(argv[1])
+    gpu_index = int(argv[2])
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_index)
+    sub_stocks = {}
+    index = 0
+    stocks_per_gpu = int(stock_count / gpu_count) + 1
+    print(stocks_per_gpu)
+    for (stock_index, stock_name) in stocks.items():
+        if index >= stocks_per_gpu * gpu_index and index < stocks_per_gpu * (gpu_index + 1):
+            sub_stocks[stock_index] = stock_name
+        index += 1
+    stocks_accuracy = train(sub_stocks)
+    '''
 
 
 

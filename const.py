@@ -35,3 +35,15 @@ TRAINING_START_DATE = '1995-01-01'
 PREDICT_START_DATE = '2018-06-01'
 TARGET_COLUMN = 'close'
 WINDOW = 20
+
+
+
+def get_stocks():
+    stocks = {}
+    with open("stocklist.txt", "r") as ff:
+        lines = ff.readlines()
+        for line in lines:
+            items = line.split(",")
+            if len(items[0]) > 0:
+                stocks[items[0]] = items[1]
+    return stocks

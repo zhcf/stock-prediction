@@ -52,15 +52,7 @@ def get_data(stock_index, start_date, csv_name):
 
 
 
-def get_all_stock_data(get_predict_data = True):
-    stocks = {}
-    with open("stocklist.txt","r") as ff:
-        lines = ff.readlines()
-        for line in lines:
-            items = line.split(",")
-            if len(items[0]) > 0:
-                stocks[items[0]] = items[1]
-
+def get_stocks_data(stocks, get_predict_data = True):
     if get_predict_data:
         start_date = PREDICT_START_DATE
     else:
@@ -86,6 +78,7 @@ def get_all_stock_data(get_predict_data = True):
 
 
 if __name__ == "__main__":
-    get_all_stock_data(get_predict_data = True)
+    stocks = get_stocks()
+    get_stocks_data(stocks, get_predict_data = True)
 
 

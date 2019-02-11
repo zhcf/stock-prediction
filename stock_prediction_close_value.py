@@ -43,16 +43,6 @@ else:
     g_predict_directory = DIR_PREDICT_FULL_PARAMS
 
 
-def get_stocks():
-    stocks = {}
-    with open("stocklist.txt", "r") as ff:
-        lines = ff.readlines()
-        for line in lines:
-            items = line.split(",")
-            if len(items[0]) > 0:
-                stocks[items[0]] = items[1]
-    return stocks
-
 
 def preprocess_training_data(stock, seq_len):
     amount_of_features = len(stock.columns)
@@ -191,8 +181,7 @@ def build_model_1(model_input_dim, model_window):
     return model
 
 
-def train():
-    stocks = get_stocks()
+def train(stocks):
     stocks_accuracy = []
     for (stock_index, stock_name) in stocks.items():
         try:
@@ -251,8 +240,7 @@ def train():
         csvwriter.writerows(stocks_accuracy)
 
 
-def predict():
-    stocks = get_stocks()
+def predict(stocks):
     stocks_accuracy = []
     for (stock_index, stock_name) in stocks.items():
         try:
@@ -303,8 +291,9 @@ def predict():
 
 
 if __name__ == "__main__":
-    train()
-    predict()
+    stocks = get_stocks()
+    train(stocks)
+    predict(stocks)
     USE_SHORT_PARAMS = False
     if USE_SHORT_PARAMS:
         g_data_predict_directory = DIR_DATA_PREDICT_SHORT_PARAMS
@@ -318,7 +307,26 @@ if __name__ == "__main__":
         g_predict_directory = DIR_PREDICT_FULL_PARAMS
     # train()
     # predict()
+    '''the below is for multi gpu running to accelerate the training, python stock_prediction_close_value.py 4 0,  python stock_prediction_close_value.py 4 1'''
+    '''
+    stocks = get_stocks()
+    stock_count = len(stocks)
+    import sys
 
+    argv = sys.argv
+    gpu_count = int(argv[1])
+    gpu_index = int(argv[2])
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_index)
+    sub_stocks = {}
+    index = 0
+    stocks_per_gpu = int(stock_count / gpu_count) + 1
+    print(stocks_per_gpu)
+    for (stock_index, stock_name) in stocks.items():
+        if index >= stocks_per_gpu * gpu_index and index < stocks_per_gpu * (gpu_index + 1):
+            sub_stocks[stock_index] = stock_name
+        index += 1
+    stocks_accuracy = train(sub_stocks)
+    '''
 
 
 
