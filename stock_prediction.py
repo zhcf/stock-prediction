@@ -19,11 +19,29 @@ import numpy as np
 import pandas as pd
 import sklearn.preprocessing as prep
 import os
+from const import *
 
-if not os.path.exists('./trainedmodels'):
-    os.mkdir('./trainedmodels')
-if not os.path.exists('./inferenceresult'):
-    os.mkdir('./inferenceresult')
+if not os.path.exists(DIR_MODEL_FULL_PARAMS):
+    os.mkdir(DIR_MODEL_FULL_PARAMS)
+if not os.path.exists(DIR_MODEL_SHORT_PARAMS):
+    os.mkdir(DIR_MODEL_SHORT_PARAMS)
+
+if not os.path.exists(DIR_PREDICT_FULL_PARAMS):
+    os.mkdir(DIR_PREDICT_FULL_PARAMS)
+if not os.path.exists(DIR_PREDICT_SHORT_PARAMS):
+    os.mkdir(DIR_PREDICT_SHORT_PARAMS)
+
+if USE_SHORT_PARAMS:
+    g_data_predict_directory = DIR_DATA_PREDICT_SHORT_PARAMS
+    g_data_train_directory = DIR_DATA_TRAIN_SHORT_PARAMS
+    g_model_directory = DIR_MODEL_SHORT_PARAMS
+    g_predict_directory = DIR_PREDICT_SHORT_PARAMS
+else:
+    g_data_predict_directory = DIR_DATA_PREDICT_FULL_PARAMS
+    g_data_train_directory = DIR_DATA_TRAIN_FULL_PARAMS
+    g_model_directory = DIR_MODEL_FULL_PARAMS
+    g_predict_directory = DIR_PREDICT_FULL_PARAMS
+
 
 def get_stocks():
     stocks = {}
@@ -175,76 +193,88 @@ def build_model_1(model_input_dim, model_window):
 
 def train():
     stocks = get_stocks()
-    stocksTestScores = {}
-    window = 20
+    stocks_accuracy = []
     for (stock_index, stock_name) in stocks.items():
         try:
-            df = pd.read_csv('./trainingdata/%s'%(stock_index))
+            df = pd.read_csv(g_data_train_directory + stock_index)
             col_list = df.columns.tolist()
             col_list.remove('date')
             df = df[col_list]
-            X_train, y_train, X_test, y_test, preprocessor_x, preprocessor_y = preprocess_training_data(df, window)
+            X_train, y_train, X_test, y_test, preprocessor_x, preprocessor_y = preprocess_training_data(df, WINDOW)
+            model = build_model(X_train.shape[2], WINDOW)
 
-            model = build_model(X_train.shape[2], window)
-            model.fit(
-                X_train,
-                y_train,
-                batch_size=128,
-                nb_epoch=10,
-                validation_split=0.0,
-                verbose=0)
+            # hyper_parameters = [(256, 1),(256,5)]
+            hyper_parameters = [(64,100), (128,100),(128, 300), (256, 300), (512, 300), (128, 500), (256, 500), (512, 500)]
+            min_error = 10000.0
+            selected_hyper_parameter = None
+            for hyper_parameter in hyper_parameters:
+                model.fit(
+                    X_train,
+                    y_train,
+                    batch_size=hyper_parameter[0],
+                    nb_epoch=hyper_parameter[1],
+                    validation_split=0.0,
+                    verbose=0)
+                # print("%s: Shape test_x %s, test_y %s" % (stock_index, str(X_test.shape), str(y_test.shape)))
+                score = model.evaluate(X_test, y_test, verbose=0)
+                error = math.sqrt(score[0])
+                if error < min_error:
+                    selected_hyper_parameter = hyper_parameter
+                    model.save(g_model_directory + stock_index, True)
+                    min_error = error
+            print(stock_index + " selected_hyper_parameter: " + str(selected_hyper_parameter))
+            print(stock_index + " min_error: " + str(min_error))
+            stocks_accuracy.append((stock_index, min_error, selected_hyper_parameter[0], selected_hyper_parameter[1]))
 
-            print("%s: Shape test_x %s, test_y %s" % (stock_index, str(X_test.shape), str(y_test.shape)))
-            testScore = model.evaluate(X_test, y_test, verbose=0)
-            print('%s: Test Score: %.2f MSE (%.2f RMSE)' % (stock_index, testScore[0], math.sqrt(testScore[0])))
-            stocksTestScores[stock_index] = math.sqrt(testScore[0])
-
-            model.save("./trainedmodels/%s.model"%(stock_index), True)
-
-            diff = []
-            ratio = []
             pred = model.predict(X_test)
             pred = preprocessor_y.inverse_transform(pred)
             pred = pred.reshape(pred.shape[0])
             y_test = preprocessor_y.inverse_transform(y_test)
             y_test = y_test.reshape(y_test.shape[0])
 
-            for u in range(len(y_test)):
-                pr = pred[u]
-                ratio.append((y_test[u]/ pr) - 1)
-                diff.append(abs(y_test[u] - pr))
-
             import matplotlib.pyplot as plt2
             plt2.title(stock_index)
             plt2.plot(pred, color='red', label='Prediction')
             plt2.plot(y_test, color='blue', label='Ground Truth')
             plt2.legend(loc='upper left')
-            plt2.savefig('./trainedmodels/%s'%(stock_index))
+            plt2.savefig(g_model_directory + stock_index)
             plt2.clf()
         except Exception as e:
             print(e)
 
-    print(stocksTestScores)
+    print(stocks_accuracy)
+    import csv
+    with open(g_model_directory + "0000000_all_stock_result", 'w', newline='') as f:
+        csvwriter = csv.writer(f)
+        csvwriter.writerows(stocks_accuracy)
+
 
 def predict():
     stocks = get_stocks()
-    window = 20
-    result = {}
+    stocks_accuracy = []
     for (stock_index, stock_name) in stocks.items():
         try:
             from keras.models import load_model
-            model = load_model("./trainedmodels/%s.model"%(stock_index))
+            model = load_model(g_model_directory + stock_index)
 
-            df = pd.read_csv('./inferencedata/%s' % (stock_index))
-            date, samples, y, preprocessor_x, preprocessor_y = preprocess_inference_data(df, window)
+            df = pd.read_csv(g_data_predict_directory + stock_index)
+            date, samples, y, preprocessor_x, preprocessor_y = preprocess_inference_data(df, WINDOW)
 
             pred = model.predict(samples)
             pred = preprocessor_y.inverse_transform(pred)
             pred = pred.reshape(pred.shape[0])
-            result[stock_index] = [y[-3],y[-2],pred[-1]]
+            y[-1] = pred[-1]
+            a = [(y[-5], pred[-5]), (y[-4], pred[-4]), (y[-3], pred[-3]), (y[-2], pred[-2]), (y[-1], pred[-1])]
+            print(stock_index + str(a))
+
+            error_percentage = 0.0
+            for u in range(len(y)):
+                error_percentage += abs(y[u] - pred[u])/y[u]
+            error_percentage = error_percentage * 100 / len(y)
+            stocks_accuracy.append((stock_index, error_percentage))
 
             import csv
-            with open('./inferenceresult/%s' % (stock_index), 'w', newline='') as f:
+            with open(g_predict_directory + stock_index, 'w', newline='') as f:
                 csvwriter = csv.writer(f)
                 rows = []
                 rows.append(("date", "actual", "pred"))
@@ -257,17 +287,36 @@ def predict():
             plt2.plot(pred, color='red', label='Prediction')
             plt2.plot(y, color='blue', label='Ground Truth')
             plt2.legend(loc='upper left')
-            plt2.savefig('./inferenceresult/%s' % (stock_index))
+            plt2.savefig(g_predict_directory + stock_index)
             plt2.clf()
 
         except Exception as e:
             print(e)
-    print(result)
 
+    print(stocks_accuracy)
+    import csv
+    with open(g_predict_directory + "0000000_all_stock_result", 'w', newline='') as f:
+        csvwriter = csv.writer(f)
+        csvwriter.writerows(stocks_accuracy)
 
 
 if __name__ == "__main__":
+    train()
     predict()
+    USE_SHORT_PARAMS = False
+    if USE_SHORT_PARAMS:
+        g_data_predict_directory = DIR_DATA_PREDICT_SHORT_PARAMS
+        g_data_train_directory = DIR_DATA_TRAIN_SHORT_PARAMS
+        g_model_directory = DIR_MODEL_SHORT_PARAMS
+        g_predict_directory = DIR_PREDICT_SHORT_PARAMS
+    else:
+        g_data_predict_directory = DIR_DATA_PREDICT_FULL_PARAMS
+        g_data_train_directory = DIR_DATA_TRAIN_FULL_PARAMS
+        g_model_directory = DIR_MODEL_FULL_PARAMS
+        g_predict_directory = DIR_PREDICT_FULL_PARAMS
+    # train()
+    # predict()
+
 
 
 

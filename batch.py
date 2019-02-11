@@ -1,4 +1,4 @@
-from data_preparation import get_data
+from data_preparation import get_all_stock_data
 from stock_prediction import predict, train
 import sys
 
@@ -9,10 +9,10 @@ if __name__ == '__main__':
         action = argv[1]
     if action == "predict":
         print("===================predict====================")
-        get_data(False)
+        get_all_stock_data(get_predict_data=True)
         predict()
     elif action == "train":
         print("===================train====================")
-        get_data(True)
+        get_all_stock_data(get_predict_data=False)
         train()
 

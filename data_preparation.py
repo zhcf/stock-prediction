@@ -17,12 +17,42 @@
 import tushare as ts # TuShare is a utility for crawling historical data of China stocks
 import pandas as pd
 import os
-if not os.path.exists('./trainingdata'):
-    os.mkdir('./trainingdata')
-if not os.path.exists('./inferencedata'):
-    os.mkdir('./inferencedata')
+from multiprocessing import Process,Pool
+from const import *
 
-def get_data(traingdata = True):
+if not os.path.exists(DIR_DATA_TRAIN_FULL_PARAMS):
+    os.mkdir(DIR_DATA_TRAIN_FULL_PARAMS)
+if not os.path.exists(DIR_DATA_TRAIN_SHORT_PARAMS):
+    os.mkdir(DIR_DATA_TRAIN_SHORT_PARAMS)
+if not os.path.exists(DIR_DATA_PREDICT_FULL_PARAMS):
+    os.mkdir(DIR_DATA_PREDICT_FULL_PARAMS)
+if not os.path.exists(DIR_DATA_PREDICT_SHORT_PARAMS):
+    os.mkdir(DIR_DATA_PREDICT_SHORT_PARAMS)
+
+def get_data(stock_index, start_date, csv_name):
+    try:
+        print(stock_index)
+        # the data saved to csv order by date, the latest date is at the bottom.
+        if USE_SHORT_PARAMS:
+            df = ts.get_h_data(stock_index, start=start_date, autype=None, retry_count=5, pause=5)
+        else:
+            df = ts.get_hist_data(stock_index, start=start_date, retry_count=5, pause=5)
+        df = df.sort_index(ascending=True)
+        # df = df.reset_index(drop=True)
+        df = df.reset_index()
+        col_list = df.columns.tolist()
+        col_list.remove(TARGET_COLUMN)
+        col_list.append(TARGET_COLUMN)
+        df = df[col_list]
+        df.to_csv(csv_name, index=False)
+        validate_df = pd.read_csv(csv_name)
+        validate_df.head()
+    except Exception as e:
+        print(e)
+
+
+
+def get_all_stock_data(get_predict_data = True):
     stocks = {}
     with open("stocklist.txt","r") as ff:
         lines = ff.readlines()
@@ -31,37 +61,31 @@ def get_data(traingdata = True):
             if len(items[0]) > 0:
                 stocks[items[0]] = items[1]
 
-    if traingdata:
-        start_date = '1995-01-01'
-        end_date = None  # We will use today as the end date here, you can specify one if you want
+    if get_predict_data:
+        start_date = PREDICT_START_DATE
     else:
-        start_date = '2018-06-01'
-        end_date = None  # We will use today as the end date here, you can specify one if you want
+        start_date = TRAINING_START_DATE
 
+    csv_directory = ""
+    if get_predict_data and USE_SHORT_PARAMS:
+        csv_directory = DIR_DATA_PREDICT_SHORT_PARAMS
+    elif get_predict_data and (not USE_SHORT_PARAMS):
+        csv_directory = DIR_DATA_PREDICT_FULL_PARAMS
+    elif (not get_predict_data) and USE_SHORT_PARAMS:
+        csv_directory = DIR_DATA_TRAIN_SHORT_PARAMS
+    elif (not get_predict_data) and (not USE_SHORT_PARAMS):
+        csv_directory = DIR_DATA_TRAIN_FULL_PARAMS
+
+    # p = Pool(3)#too many process, it will return http error 456
     for (stock_index, stock_name) in stocks.items():
-        print(stock_index)
-        if traingdata:
-            csv_name = './trainingdata/%s'%(stock_index)
-        else:
-            csv_name = './inferencedata/%s'%(stock_index)
-        # the data saved to csv order by date, the latest date is at the top.
-        df = ts.get_h_data(stock_index, start=start_date, autype=None, retry_count=5, pause=5)
-        df = df.sort_index(ascending=True)
-        #df = df.reset_index(drop=True)
-        df = df.reset_index()
-        col_list = df.columns.tolist()
-        col_list.remove('close')
-        col_list.remove('amount') # Just for simplicity, should not be removed
-        col_list.append('close')
-        df = df[col_list]
-        df['volume'] = df['volume'] / 1000000
-        df.to_csv(csv_name, index=False)
-        validate_df = pd.read_csv(csv_name)
-        validate_df.head()
-
+        csv_name = csv_directory + stock_index
+        get_data(stock_index, start_date, csv_name)
+        # p.apply_async(get_data, args=(stock_index, start_date, csv_name))
+    # p.close()
+    # p.join()
 
 
 if __name__ == "__main__":
-    get_data(False)
+    get_all_stock_data(get_predict_data = True)
 
 
