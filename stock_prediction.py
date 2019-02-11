@@ -204,7 +204,9 @@ def train():
             model = build_model(X_train.shape[2], WINDOW)
 
             # hyper_parameters = [(256, 1),(256,5)]
-            hyper_parameters = [(64,100), (128,100),(128, 300), (256, 300), (512, 300), (128, 500), (256, 500), (512, 500)]
+            hyper_parameters = [(64,10), (128,10), (64,50), (128,50), (256,50),
+                                (64,100), (128,100),(128, 300), (256, 300),
+                                (512, 300), (128, 500), (256, 500), (512, 500)]
             min_error = 10000.0
             selected_hyper_parameter = None
             for hyper_parameter in hyper_parameters:
