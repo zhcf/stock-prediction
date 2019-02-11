@@ -1,5 +1,5 @@
 from data_preparation import get_all_stock_data
-from stock_prediction import predict, train
+from stock_prediction_close_value import predict, train
 import sys
 
 if __name__ == '__main__':

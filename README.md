@@ -1,6 +1,8 @@
 # Stock Prediction with Recurrent Neural Network
 
-Stock price prediction with RNN. The data we used is from the Chinese stock.
+This is forked from _https://github.com/Kulbear/stock-prediction_ 
+ 
+The data we used is from Chinese stock.
 
 ## Requirements
 
