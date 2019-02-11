@@ -23,7 +23,7 @@ This is used to train the model to predict the stock price.
 2. python batch_close_value.py train  
 3. python batch_close_value.py predict
 
-The step 2 just need run at first time, after the model is trained, next time, you can just run step 3.
+The step 2 just need run at first time, after the model is trained, next time, you can run step 3 directly
 
 ## Predict The Stock Up or Down
 This is used to train the model to predict the stock rise up or go down.
@@ -31,7 +31,7 @@ This is used to train the model to predict the stock rise up or go down.
 2. python batch_up_down.py train  
 3. python batch_up_down.py predict
 
-The step 2 just need run at first time, after the model is trained, next time, you can just run step 3.
+The step 2 just need run at first time, after the model is trained, next time, you can run step 3 directly
 
 ## Demo for Predicting Stock Close Value
 
