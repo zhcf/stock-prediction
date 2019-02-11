@@ -68,24 +68,26 @@ def preprocess_training_data(stock, seq_len):
     x_train = x_train.reshape(x_train.shape[0], seq_len, amount_of_features)
     x_test = x_test.reshape(x_test.shape[0], seq_len, amount_of_features)
 
+    all[:, -1, -1] = all[:, -1, -1] - all[:, -2, -1]
+    all[:, -1, -1][all[:, -1, -1] > 0] = 1
+    all[:, -1, -1][all[:, -1, -1] <= 0] = 0
     y = all[:, -1][:, -1]
     y_train = y[: int(row)]
     y_test = y[int(row):]
-
-    y = y.reshape(y.shape[0], 1)
     y_train = y_train.reshape(y_train.shape[0], 1)
     y_test = y_test.reshape(y_test.shape[0], 1)
-    preprocessor_y = prep.StandardScaler().fit(y)
-    y_train = preprocessor_y.transform(y_train)
-    y_test = preprocessor_y.transform(y_test)
 
-    return [x_train, y_train, x_test, y_test, preprocessor_sample, preprocessor_y]
+    return [x_train, y_train, x_test, y_test]
 
 
 def preprocess_inference_data(stock, seq_len):
     date = stock.values[:, 0][seq_len:]
     date = np.append(date, (0))
-    y = stock.values[:, -1][seq_len:]
+    y1 = stock.values[:, -1][seq_len-1:-1]
+    y2 = stock.values[:, -1][seq_len:]
+    y = y2 -y1
+    y[:][y[:]>0] = 1
+    y[:][y[:]<=0] = 0
     y = np.append(y, (0))
 
     col_list = stock.columns.tolist()
@@ -106,11 +108,7 @@ def preprocess_inference_data(stock, seq_len):
     samples = preprocessor_sample.transform(samples)
     samples = samples.reshape(samples.shape[0], seq_len, amount_of_features)
 
-    y_all = all[:, 0, -1]
-    y_all = y_all.reshape(y_all.shape[0], 1)
-    preprocessor_y = prep.StandardScaler().fit(y_all)
-
-    return [date, samples, y, preprocessor_sample, preprocessor_y]
+    return [date, samples, y]
 
 
 # ## Build the LSTM Network
@@ -186,7 +184,7 @@ def train(stocks):
             col_list = df.columns.tolist()
             col_list.remove('date')
             df = df[col_list]
-            X_train, y_train, X_test, y_test, preprocessor_x, preprocessor_y = preprocess_training_data(df, WINDOW)
+            X_train, y_train, X_test, y_test = preprocess_training_data(df, WINDOW)
             model = build_model(X_train.shape[2], WINDOW)
 
             # hyper_parameters = [(256, 1),(256,5)]
@@ -203,7 +201,6 @@ def train(stocks):
                     nb_epoch=hyper_parameter[1],
                     validation_split=0.0,
                     verbose=0)
-                # print("%s: Shape test_x %s, test_y %s" % (stock_index, str(X_test.shape), str(y_test.shape)))
                 score = model.evaluate(X_test, y_test, verbose=0)
                 error = math.sqrt(score[0])
                 if error < min_error:
@@ -212,21 +209,19 @@ def train(stocks):
                     min_error = error
             print(stock_index + " selected_hyper_parameter: " + str(selected_hyper_parameter))
             print(stock_index + " min_error: " + str(min_error))
-            stocks_accuracy.append((stock_index, min_error, selected_hyper_parameter[0], selected_hyper_parameter[1]))
 
             pred = model.predict(X_test)
-            pred = preprocessor_y.inverse_transform(pred)
             pred = pred.reshape(pred.shape[0])
-            y_test = preprocessor_y.inverse_transform(y_test)
+            pred[:][pred[:] > THRESHOLD] = 1
+            pred[:][pred[:] <= THRESHOLD] = 0
             y_test = y_test.reshape(y_test.shape[0])
+            correct_count = 0
+            for u in range(len(pred)):
+                if pred[u] == y_test[u]:
+                    correct_count += 1
+            accuracy = float(correct_count) / float(len(pred)) * 100
+            stocks_accuracy.append((stock_index, min_error, accuracy, selected_hyper_parameter[0], selected_hyper_parameter[1]))
 
-            import matplotlib.pyplot as plt2
-            plt2.title(stock_index)
-            plt2.plot(pred, color='red', label='Prediction')
-            plt2.plot(y_test, color='blue', label='Ground Truth')
-            plt2.legend(loc='upper left')
-            plt2.savefig(g_model_directory + stock_index)
-            plt2.clf()
         except Exception as e:
             print(e)
 
@@ -245,20 +240,23 @@ def predict(stocks):
             model = load_model(g_model_directory + stock_index)
 
             df = pd.read_csv(g_data_predict_directory + stock_index)
-            date, samples, y, preprocessor_x, preprocessor_y = preprocess_inference_data(df, WINDOW)
+            date, samples, y = preprocess_inference_data(df, WINDOW)
 
             pred = model.predict(samples)
-            pred = preprocessor_y.inverse_transform(pred)
             pred = pred.reshape(pred.shape[0])
+            pred[:][pred[:] > THRESHOLD] = 1
+            pred[:][pred[:] <= THRESHOLD] = 0
             y[-1] = pred[-1]
             a = [(y[-5], pred[-5]), (y[-4], pred[-4]), (y[-3], pred[-3]), (y[-2], pred[-2]), (y[-1], pred[-1])]
             print(stock_index + str(a))
 
-            error_percentage = 0.0
-            for u in range(len(y)):
-                error_percentage += abs(y[u] - pred[u]) / y[u]
-            error_percentage = error_percentage * 100 / len(y)
-            stocks_accuracy.append((stock_index, error_percentage))
+
+            correct_count = 0
+            for u in range(len(pred)):
+                if pred[u] == y[u]:
+                    correct_count += 1
+            accuracy = float(correct_count) / float(len(pred)) * 100
+            stocks_accuracy.append((stock_index, accuracy))
 
             import csv
             with open(g_predict_directory + stock_index, 'w', newline='') as f:
@@ -268,14 +266,6 @@ def predict(stocks):
                 for i in range(len(pred)):
                     rows.append((date[i], y[i], pred[i]))
                 csvwriter.writerows(rows)
-
-            import matplotlib.pyplot as plt2
-            plt2.title(stock_index)
-            plt2.plot(pred, color='red', label='Prediction')
-            plt2.plot(y, color='blue', label='Ground Truth')
-            plt2.legend(loc='upper left')
-            plt2.savefig(g_predict_directory + stock_index)
-            plt2.clf()
 
         except Exception as e:
             print(e)
@@ -290,18 +280,18 @@ def predict(stocks):
 if __name__ == "__main__":
     stocks = get_stocks()
     train(stocks)
-    predict(stocks)
-    USE_SHORT_PARAMS = False
-    if USE_SHORT_PARAMS:
-        g_data_predict_directory = DIR_DATA_PREDICT_SHORT_PARAMS
-        g_data_train_directory = DIR_DATA_TRAIN_SHORT_PARAMS
-        g_model_directory = DIR_MODEL_SHORT_PARAMS
-        g_predict_directory = DIR_PREDICT_SHORT_PARAMS
-    else:
-        g_data_predict_directory = DIR_DATA_PREDICT_FULL_PARAMS
-        g_data_train_directory = DIR_DATA_TRAIN_FULL_PARAMS
-        g_model_directory = DIR_MODEL_FULL_PARAMS
-        g_predict_directory = DIR_PREDICT_FULL_PARAMS
+    # predict(stocks)
+    # USE_SHORT_PARAMS = False
+    # if USE_SHORT_PARAMS:
+    #     g_data_predict_directory = DIR_DATA_PREDICT_SHORT_PARAMS
+    #     g_data_train_directory = DIR_DATA_TRAIN_SHORT_PARAMS
+    #     g_model_directory = DIR_MODEL_SHORT_PARAMS
+    #     g_predict_directory = DIR_PREDICT_SHORT_PARAMS
+    # else:
+    #     g_data_predict_directory = DIR_DATA_PREDICT_FULL_PARAMS
+    #     g_data_train_directory = DIR_DATA_TRAIN_FULL_PARAMS
+    #     g_model_directory = DIR_MODEL_FULL_PARAMS
+    #     g_predict_directory = DIR_PREDICT_FULL_PARAMS
     # train()
     # predict()
     '''the below is for multi gpu running to accelerate the training, python stock_prediction_close_value.py 4 0,  python stock_prediction_close_value.py 4 1'''
