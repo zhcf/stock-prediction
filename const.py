@@ -42,7 +42,7 @@ THRESHOLD = 0.5
 def get_stocks():
     stocks = {}
     with open("stocklist.txt", "r") as ff:
-        lines = ff.readlines()
+        lines = ff.read().splitlines()
         for line in lines:
             items = line.split(",")
             if len(items[0]) > 0:
