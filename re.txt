@@ -1,0 +1,7 @@
+lxml
+requests
+TuShare==0.7.4
+Pandas==0.19.2
+Keras==1.2.2
+Numpy==1.12.0
+scikit-learn==0.18.1
