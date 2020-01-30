@@ -1,6 +1,4 @@
 # Stock Prediction with Recurrent Neural Network
-
-This is forked from _https://github.com/Kulbear/stock-prediction_ 
  
 This is target for Chinese stocks. 
 
@@ -12,9 +10,9 @@ This is target for Chinese stocks.
 - Keras 1.2.2
 - Numpy 1.12.0
 - scikit-learn 0.18.1
-- TensorFlow 1.0 (GPU version recommended)
+- TensorFlow 1.0 (GPU version)
 
-## How to use
+## How To Use
 Assume this project is cloned to /opt/  
 docker run -it --gpus all -v /opt:/opt/ zhcf/stock:0128 /bin/bash (zhcf/stock is the runtime ready docker image)   
 pyhton stock-prediction.py  (train model or use trained model to predict)   
