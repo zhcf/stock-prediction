@@ -37,6 +37,31 @@ def get_stocks():
                 stocks[items[0]] = items[1]
     return stocks
 
+def preprocess_training_data_1(df, seq_len):
+    col_list = df.columns.tolist()
+    col_list.remove('date')
+    df = df[col_list]
+
+    amount_of_features = len(df.columns)
+    data = df.values
+
+    sequence_length = seq_len + 2
+    all = []
+    for index in range(len(data) - sequence_length):
+        all.append(data[index: index + sequence_length])
+
+    all = np.array(all)
+    x_train = all[:, : -2]
+    x_train = x_train.reshape(x_train.shape[0], seq_len * amount_of_features)
+    preprocessor_x = prep.StandardScaler().fit(x_train)
+    x_train = preprocessor_x.transform(x_train)
+    x_train = x_train.reshape(x_train.shape[0], seq_len, amount_of_features)
+
+    y_train = all[:, -1][:, -1] - all[:, -2][:, 0]
+    y_train[y_train > 0] = 1
+    y_train[y_train <= 0] = 0
+
+    return [x_train, y_train]
 
 def preprocess_training_data(df, seq_len):
     col_list = df.columns.tolist()
@@ -63,6 +88,28 @@ def preprocess_training_data(df, seq_len):
     y_train[y_train <= 0] = 0
 
     return [x_train, y_train]
+
+def preprocess_infernece_data_1(df, seq_len):
+    col_list = df.columns.tolist()
+    col_list.remove('date')
+    df = df[col_list]
+
+    amount_of_features = len(df.columns)
+    data = df.values
+
+    sequence_length = seq_len
+    all = []
+    for index in range(len(data) - sequence_length):
+        all.append(data[index: index + sequence_length])
+
+    all = np.array(all)
+    all = all.reshape(all.shape[0], seq_len * amount_of_features)
+    preprocessor_x = prep.StandardScaler().fit(all)
+    all = preprocessor_x.transform(all)
+    all = all.reshape(all.shape[0], seq_len, amount_of_features)
+    all = all[-5:-1]
+
+    return all
 
 def preprocess_infernece_data(df, seq_len):
     col_list = df.columns.tolist()
@@ -112,7 +159,7 @@ def build_model(model_input_dim, model_window):
 def train(stock_index):
     try:
         df = pd.read_csv(g_data_train_directory + stock_index)
-        x_train, y_train = preprocess_training_data(df, 20)
+        x_train, y_train = preprocess_training_data_1(df, 20)
         model = build_model(x_train.shape[2], 20)
         print("start stock_index:%s" % (stock_index))
         hyper_parameters = [(4,64)]
@@ -143,7 +190,7 @@ def predict(stock_index):
     from keras.models import load_model
     model = load_model(g_model_directory + stock_index + ".model")
     df = pd.read_csv(g_data_predict_directory + stock_index)
-    data = preprocess_infernece_data(df, 20)
+    data = preprocess_infernece_data_1(df, 20)
     pred = model.predict(data)
     print(stock_index)
     print(pred)
