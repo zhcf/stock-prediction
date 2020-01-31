@@ -202,8 +202,7 @@ if __name__ == "__main__":
     # for (stock_index, stock_name) in stocks.items():
     #     train(stock_index)
 
-    #get_all_stock_predict_data()
+    get_all_stock_predict_data()
     stocks = get_stocks()
     for (stock_index, stock_name) in stocks.items():
         predict(stock_index)
-    
