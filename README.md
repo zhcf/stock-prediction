@@ -18,4 +18,4 @@ docker run -it --gpus all -v /opt:/opt/ zhcf/stock:0128 /bin/bash (zhcf/stock is
 pyhton stock-prediction.py  (train model or use trained model to predict)   
 python data_preparation.py (get training data or prediction data)   
 
-You can run the prediction tonight, the prediction result represents the probability of meansthird day's close value is higher than tomorrow's open value.
+You can run the prediction tonight, the prediction result represents the probability：close value of the day after tomorrow is higher than open  value of tomorrow.
