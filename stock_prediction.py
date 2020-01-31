@@ -21,6 +21,7 @@ import pandas as pd
 import sklearn.preprocessing as prep
 import os
 from const import *
+from data_preparation import get_all_stock_train_data, get_all_stock_predict_data
 
 
 g_data_train_directory = DIR_DATA_TRAIN_FULL_PARAMS
@@ -196,17 +197,13 @@ def predict(stock_index):
     print(pred)
 
 if __name__ == "__main__":
+    # get_all_stock_train_data()
     # stocks = get_stocks()
     # for (stock_index, stock_name) in stocks.items():
     #     train(stock_index)
-    stock_index = "000063"
-    # train(stock_index)
-    predict(stock_index)
 
-
-    # train()
-    # predict()
-
-
-
-
+    #get_all_stock_predict_data()
+    stocks = get_stocks()
+    for (stock_index, stock_name) in stocks.items():
+        predict(stock_index)
+    
